@@ -1,66 +1,48 @@
 /*
- * 管理ツール（sns-worker）と色をそろえる。**このファイル1つで完結させる。**
+ * ダークモード。**sns-worker（管理ツール）と同じ暗い配色にする。**
+ *
+ * ライトモードは LINE Harness の元の見た目（白地・緑）のまま、何も上書きしない。
+ * ダークのときだけ <html data-sw-theme="dark"> が付き、このファイルの指定が効く。
+ * 切り替えは右下のボタン（components/sns-theme-toggle.tsx）。選んだほうは覚えておき、
+ * 初めて開いたときは Mac の設定に合わせる。
  *
  * 画面のプログラムには触らず、Tailwind の色の決まり（--color-gray-* など）を
- * sns-worker の配色に置き換えるだけ。作者の更新を取り込むときにぶつからないよう、
- * 元のファイルへの変更は globals.css の読み込み1行に留めてある。
+ * 置き換えるだけ。作者の更新を取り込むときにぶつからないよう、元のファイルへの変更は
+ * globals.css の読み込み1行と、layout.tsx の数行に留めてある。
  *
- * - 明るい／暗いは Mac の設定に合わせて切り替わる（sns-worker と同じ）
- * - 差し色は sns-worker の青。ただし LINE のメッセージの見本（flex-preview）は
- *   実物に合わせて緑のまま（直書きの色なのでここでは変わらない）
- * - 灰色は文字にも背景にも使われているので、暗いときは濃淡を裏返す
+ * - 差し色は sns-worker の青。LINE のメッセージの見本（flex-preview）は実物どおり緑
+ * - 灰色は文字にも背景にも使われているので、濃淡を裏返す
  *   （gray-50 の背景は暗く、gray-900 の文字は明るくなる）
  */
 
-:root {
-  color-scheme: light dark;
+:root[data-sw-theme="dark"] {
+  color-scheme: dark;
 
-  /* sns-worker の app.css と同じ値 */
-  --sw-bg: #f3f5f8;
-  --sw-surface: #fff;
-  --sw-surface2: #f8fafc;
-  --sw-line: #e3e8ee;
-  --sw-line2: #eef2f6;
-  --sw-text: #14181d;
-  --sw-muted: #5b6573;
-  --sw-faint: #66778b;
-  --sw-accent: #1877c6;
-  --sw-accent2: #3fa0ea;
-  --sw-accent-soft: #eaf3fc;
+  /* sns-worker の app.css（暗いとき）と同じ値 */
+  --sw-bg: #0d1117;
+  --sw-surface: #161b22;
+  --sw-surface2: #1c232c;
+  --sw-line: #2b323b;
+  --sw-line2: #232a33;
+  --sw-text: #e7edf3;
+  --sw-muted: #9aa7b4;
+  --sw-faint: #788594;
+  --sw-accent: #4ea3f0;
+  --sw-accent2: #6fb6f5;
+  --sw-accent-soft: #17293b;
 
   /* 灰色の段（sns-worker の配色から間を埋めたもの） */
-  --sw-g300: #cbd3dc;
-  --sw-g400: #8a96a3;
-  --sw-g700: #3b4450;
-  --sw-g800: #252b33;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --sw-bg: #0d1117;
-    --sw-surface: #161b22;
-    --sw-surface2: #1c232c;
-    --sw-line: #2b323b;
-    --sw-line2: #232a33;
-    --sw-text: #e7edf3;
-    --sw-muted: #9aa7b4;
-    --sw-faint: #788594;
-    --sw-accent: #4ea3f0;
-    --sw-accent2: #6fb6f5;
-    --sw-accent-soft: #17293b;
-
-    --sw-g300: #3a434e;
-    --sw-g400: #6b7785;
-    --sw-g700: #c3ccd6;
-    --sw-g800: #dbe2ea;
-  }
+  --sw-g300: #3a434e;
+  --sw-g400: #6b7785;
+  --sw-g700: #c3ccd6;
+  --sw-g800: #dbe2ea;
 }
 
 /* ------------------------------------------------------------------ */
 /* 灰色・青みの灰色（文字・線・面の大半がこれ）                         */
 /* ------------------------------------------------------------------ */
 
-:root {
+:root[data-sw-theme="dark"] {
   --color-gray-50: var(--sw-bg);
   --color-gray-100: var(--sw-line2);
   --color-gray-200: var(--sw-line);
@@ -102,187 +84,185 @@
 /* （ここはレイヤーの外に書いてあるので、Tailwind の指定より強い）      */
 /* ------------------------------------------------------------------ */
 
-.bg-white {
+:root[data-sw-theme="dark"] .bg-white {
   background-color: var(--sw-surface);
 }
-.border-white {
+:root[data-sw-theme="dark"] .border-white {
   border-color: var(--sw-surface);
 }
-.hover\:bg-white:hover {
+:root[data-sw-theme="dark"] .hover\:bg-white:hover {
   background-color: var(--sw-surface);
 }
 
-body {
+:root[data-sw-theme="dark"] body {
   background-color: var(--sw-bg);
   color: var(--sw-text);
   font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif !important;
 }
 
 /* ------------------------------------------------------------------ */
-/* 色付きの淡い箱と濃い文字（暗いときだけ）                             */
+/* 色付きの淡い箱と濃い文字                                               */
 /* 明るい画面用の淡い背景（blue-50 など）は、暗い画面ではまぶしく浮く。 */
 /* 面の色に少しだけ色を混ぜた暗い背景にし、濃い文字は明るくする。      */
 /* ------------------------------------------------------------------ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-red-50: color-mix(in oklab, #ef4444 12%, var(--sw-surface));
-    --color-red-100: color-mix(in oklab, #ef4444 18%, var(--sw-surface));
-    --color-red-200: color-mix(in oklab, #ef4444 28%, var(--sw-surface));
-    --color-red-300: color-mix(in oklab, #ef4444 42%, var(--sw-surface));
-    --color-red-600: color-mix(in oklab, #ef4444 82%, white);
-    --color-red-700: color-mix(in oklab, #ef4444 70%, white);
-    --color-red-800: color-mix(in oklab, #ef4444 58%, white);
-    --color-red-900: color-mix(in oklab, #ef4444 48%, white);
-    --color-red-950: color-mix(in oklab, #ef4444 40%, white);
-    --color-orange-50: color-mix(in oklab, #f97316 12%, var(--sw-surface));
-    --color-orange-100: color-mix(in oklab, #f97316 18%, var(--sw-surface));
-    --color-orange-200: color-mix(in oklab, #f97316 28%, var(--sw-surface));
-    --color-orange-300: color-mix(in oklab, #f97316 42%, var(--sw-surface));
-    --color-orange-600: color-mix(in oklab, #f97316 82%, white);
-    --color-orange-700: color-mix(in oklab, #f97316 70%, white);
-    --color-orange-800: color-mix(in oklab, #f97316 58%, white);
-    --color-orange-900: color-mix(in oklab, #f97316 48%, white);
-    --color-orange-950: color-mix(in oklab, #f97316 40%, white);
-    --color-amber-50: color-mix(in oklab, #f59e0b 12%, var(--sw-surface));
-    --color-amber-100: color-mix(in oklab, #f59e0b 18%, var(--sw-surface));
-    --color-amber-200: color-mix(in oklab, #f59e0b 28%, var(--sw-surface));
-    --color-amber-300: color-mix(in oklab, #f59e0b 42%, var(--sw-surface));
-    --color-amber-600: color-mix(in oklab, #f59e0b 82%, white);
-    --color-amber-700: color-mix(in oklab, #f59e0b 70%, white);
-    --color-amber-800: color-mix(in oklab, #f59e0b 58%, white);
-    --color-amber-900: color-mix(in oklab, #f59e0b 48%, white);
-    --color-amber-950: color-mix(in oklab, #f59e0b 40%, white);
-    --color-yellow-50: color-mix(in oklab, #eab308 12%, var(--sw-surface));
-    --color-yellow-100: color-mix(in oklab, #eab308 18%, var(--sw-surface));
-    --color-yellow-200: color-mix(in oklab, #eab308 28%, var(--sw-surface));
-    --color-yellow-300: color-mix(in oklab, #eab308 42%, var(--sw-surface));
-    --color-yellow-600: color-mix(in oklab, #eab308 82%, white);
-    --color-yellow-700: color-mix(in oklab, #eab308 70%, white);
-    --color-yellow-800: color-mix(in oklab, #eab308 58%, white);
-    --color-yellow-900: color-mix(in oklab, #eab308 48%, white);
-    --color-yellow-950: color-mix(in oklab, #eab308 40%, white);
-    --color-lime-50: color-mix(in oklab, #84cc16 12%, var(--sw-surface));
-    --color-lime-100: color-mix(in oklab, #84cc16 18%, var(--sw-surface));
-    --color-lime-200: color-mix(in oklab, #84cc16 28%, var(--sw-surface));
-    --color-lime-300: color-mix(in oklab, #84cc16 42%, var(--sw-surface));
-    --color-lime-600: color-mix(in oklab, #84cc16 82%, white);
-    --color-lime-700: color-mix(in oklab, #84cc16 70%, white);
-    --color-lime-800: color-mix(in oklab, #84cc16 58%, white);
-    --color-lime-900: color-mix(in oklab, #84cc16 48%, white);
-    --color-lime-950: color-mix(in oklab, #84cc16 40%, white);
-    --color-green-50: color-mix(in oklab, #22c55e 12%, var(--sw-surface));
-    --color-green-100: color-mix(in oklab, #22c55e 18%, var(--sw-surface));
-    --color-green-200: color-mix(in oklab, #22c55e 28%, var(--sw-surface));
-    --color-green-300: color-mix(in oklab, #22c55e 42%, var(--sw-surface));
-    --color-green-600: color-mix(in oklab, #22c55e 82%, white);
-    --color-green-700: color-mix(in oklab, #22c55e 70%, white);
-    --color-green-800: color-mix(in oklab, #22c55e 58%, white);
-    --color-green-900: color-mix(in oklab, #22c55e 48%, white);
-    --color-green-950: color-mix(in oklab, #22c55e 40%, white);
-    --color-emerald-50: color-mix(in oklab, #10b981 12%, var(--sw-surface));
-    --color-emerald-100: color-mix(in oklab, #10b981 18%, var(--sw-surface));
-    --color-emerald-200: color-mix(in oklab, #10b981 28%, var(--sw-surface));
-    --color-emerald-300: color-mix(in oklab, #10b981 42%, var(--sw-surface));
-    --color-emerald-600: color-mix(in oklab, #10b981 82%, white);
-    --color-emerald-700: color-mix(in oklab, #10b981 70%, white);
-    --color-emerald-800: color-mix(in oklab, #10b981 58%, white);
-    --color-emerald-900: color-mix(in oklab, #10b981 48%, white);
-    --color-emerald-950: color-mix(in oklab, #10b981 40%, white);
-    --color-teal-50: color-mix(in oklab, #14b8a6 12%, var(--sw-surface));
-    --color-teal-100: color-mix(in oklab, #14b8a6 18%, var(--sw-surface));
-    --color-teal-200: color-mix(in oklab, #14b8a6 28%, var(--sw-surface));
-    --color-teal-300: color-mix(in oklab, #14b8a6 42%, var(--sw-surface));
-    --color-teal-600: color-mix(in oklab, #14b8a6 82%, white);
-    --color-teal-700: color-mix(in oklab, #14b8a6 70%, white);
-    --color-teal-800: color-mix(in oklab, #14b8a6 58%, white);
-    --color-teal-900: color-mix(in oklab, #14b8a6 48%, white);
-    --color-teal-950: color-mix(in oklab, #14b8a6 40%, white);
-    --color-cyan-50: color-mix(in oklab, #06b6d4 12%, var(--sw-surface));
-    --color-cyan-100: color-mix(in oklab, #06b6d4 18%, var(--sw-surface));
-    --color-cyan-200: color-mix(in oklab, #06b6d4 28%, var(--sw-surface));
-    --color-cyan-300: color-mix(in oklab, #06b6d4 42%, var(--sw-surface));
-    --color-cyan-600: color-mix(in oklab, #06b6d4 82%, white);
-    --color-cyan-700: color-mix(in oklab, #06b6d4 70%, white);
-    --color-cyan-800: color-mix(in oklab, #06b6d4 58%, white);
-    --color-cyan-900: color-mix(in oklab, #06b6d4 48%, white);
-    --color-cyan-950: color-mix(in oklab, #06b6d4 40%, white);
-    --color-sky-50: color-mix(in oklab, #0ea5e9 12%, var(--sw-surface));
-    --color-sky-100: color-mix(in oklab, #0ea5e9 18%, var(--sw-surface));
-    --color-sky-200: color-mix(in oklab, #0ea5e9 28%, var(--sw-surface));
-    --color-sky-300: color-mix(in oklab, #0ea5e9 42%, var(--sw-surface));
-    --color-sky-600: color-mix(in oklab, #0ea5e9 82%, white);
-    --color-sky-700: color-mix(in oklab, #0ea5e9 70%, white);
-    --color-sky-800: color-mix(in oklab, #0ea5e9 58%, white);
-    --color-sky-900: color-mix(in oklab, #0ea5e9 48%, white);
-    --color-sky-950: color-mix(in oklab, #0ea5e9 40%, white);
-    --color-blue-50: color-mix(in oklab, #3b82f6 12%, var(--sw-surface));
-    --color-blue-100: color-mix(in oklab, #3b82f6 18%, var(--sw-surface));
-    --color-blue-200: color-mix(in oklab, #3b82f6 28%, var(--sw-surface));
-    --color-blue-300: color-mix(in oklab, #3b82f6 42%, var(--sw-surface));
-    --color-blue-600: color-mix(in oklab, #3b82f6 82%, white);
-    --color-blue-700: color-mix(in oklab, #3b82f6 70%, white);
-    --color-blue-800: color-mix(in oklab, #3b82f6 58%, white);
-    --color-blue-900: color-mix(in oklab, #3b82f6 48%, white);
-    --color-blue-950: color-mix(in oklab, #3b82f6 40%, white);
-    --color-indigo-50: color-mix(in oklab, #6366f1 12%, var(--sw-surface));
-    --color-indigo-100: color-mix(in oklab, #6366f1 18%, var(--sw-surface));
-    --color-indigo-200: color-mix(in oklab, #6366f1 28%, var(--sw-surface));
-    --color-indigo-300: color-mix(in oklab, #6366f1 42%, var(--sw-surface));
-    --color-indigo-600: color-mix(in oklab, #6366f1 82%, white);
-    --color-indigo-700: color-mix(in oklab, #6366f1 70%, white);
-    --color-indigo-800: color-mix(in oklab, #6366f1 58%, white);
-    --color-indigo-900: color-mix(in oklab, #6366f1 48%, white);
-    --color-indigo-950: color-mix(in oklab, #6366f1 40%, white);
-    --color-violet-50: color-mix(in oklab, #8b5cf6 12%, var(--sw-surface));
-    --color-violet-100: color-mix(in oklab, #8b5cf6 18%, var(--sw-surface));
-    --color-violet-200: color-mix(in oklab, #8b5cf6 28%, var(--sw-surface));
-    --color-violet-300: color-mix(in oklab, #8b5cf6 42%, var(--sw-surface));
-    --color-violet-600: color-mix(in oklab, #8b5cf6 82%, white);
-    --color-violet-700: color-mix(in oklab, #8b5cf6 70%, white);
-    --color-violet-800: color-mix(in oklab, #8b5cf6 58%, white);
-    --color-violet-900: color-mix(in oklab, #8b5cf6 48%, white);
-    --color-violet-950: color-mix(in oklab, #8b5cf6 40%, white);
-    --color-purple-50: color-mix(in oklab, #a855f7 12%, var(--sw-surface));
-    --color-purple-100: color-mix(in oklab, #a855f7 18%, var(--sw-surface));
-    --color-purple-200: color-mix(in oklab, #a855f7 28%, var(--sw-surface));
-    --color-purple-300: color-mix(in oklab, #a855f7 42%, var(--sw-surface));
-    --color-purple-600: color-mix(in oklab, #a855f7 82%, white);
-    --color-purple-700: color-mix(in oklab, #a855f7 70%, white);
-    --color-purple-800: color-mix(in oklab, #a855f7 58%, white);
-    --color-purple-900: color-mix(in oklab, #a855f7 48%, white);
-    --color-purple-950: color-mix(in oklab, #a855f7 40%, white);
-    --color-fuchsia-50: color-mix(in oklab, #d946ef 12%, var(--sw-surface));
-    --color-fuchsia-100: color-mix(in oklab, #d946ef 18%, var(--sw-surface));
-    --color-fuchsia-200: color-mix(in oklab, #d946ef 28%, var(--sw-surface));
-    --color-fuchsia-300: color-mix(in oklab, #d946ef 42%, var(--sw-surface));
-    --color-fuchsia-600: color-mix(in oklab, #d946ef 82%, white);
-    --color-fuchsia-700: color-mix(in oklab, #d946ef 70%, white);
-    --color-fuchsia-800: color-mix(in oklab, #d946ef 58%, white);
-    --color-fuchsia-900: color-mix(in oklab, #d946ef 48%, white);
-    --color-fuchsia-950: color-mix(in oklab, #d946ef 40%, white);
-    --color-pink-50: color-mix(in oklab, #ec4899 12%, var(--sw-surface));
-    --color-pink-100: color-mix(in oklab, #ec4899 18%, var(--sw-surface));
-    --color-pink-200: color-mix(in oklab, #ec4899 28%, var(--sw-surface));
-    --color-pink-300: color-mix(in oklab, #ec4899 42%, var(--sw-surface));
-    --color-pink-600: color-mix(in oklab, #ec4899 82%, white);
-    --color-pink-700: color-mix(in oklab, #ec4899 70%, white);
-    --color-pink-800: color-mix(in oklab, #ec4899 58%, white);
-    --color-pink-900: color-mix(in oklab, #ec4899 48%, white);
-    --color-pink-950: color-mix(in oklab, #ec4899 40%, white);
-    --color-rose-50: color-mix(in oklab, #f43f5e 12%, var(--sw-surface));
-    --color-rose-100: color-mix(in oklab, #f43f5e 18%, var(--sw-surface));
-    --color-rose-200: color-mix(in oklab, #f43f5e 28%, var(--sw-surface));
-    --color-rose-300: color-mix(in oklab, #f43f5e 42%, var(--sw-surface));
-    --color-rose-600: color-mix(in oklab, #f43f5e 82%, white);
-    --color-rose-700: color-mix(in oklab, #f43f5e 70%, white);
-    --color-rose-800: color-mix(in oklab, #f43f5e 58%, white);
-    --color-rose-900: color-mix(in oklab, #f43f5e 48%, white);
-    --color-rose-950: color-mix(in oklab, #f43f5e 40%, white);
-  }
+:root[data-sw-theme="dark"] {
+  --color-red-50: color-mix(in oklab, #ef4444 12%, var(--sw-surface));
+  --color-red-100: color-mix(in oklab, #ef4444 18%, var(--sw-surface));
+  --color-red-200: color-mix(in oklab, #ef4444 28%, var(--sw-surface));
+  --color-red-300: color-mix(in oklab, #ef4444 42%, var(--sw-surface));
+  --color-red-600: color-mix(in oklab, #ef4444 82%, white);
+  --color-red-700: color-mix(in oklab, #ef4444 70%, white);
+  --color-red-800: color-mix(in oklab, #ef4444 58%, white);
+  --color-red-900: color-mix(in oklab, #ef4444 48%, white);
+  --color-red-950: color-mix(in oklab, #ef4444 40%, white);
+  --color-orange-50: color-mix(in oklab, #f97316 12%, var(--sw-surface));
+  --color-orange-100: color-mix(in oklab, #f97316 18%, var(--sw-surface));
+  --color-orange-200: color-mix(in oklab, #f97316 28%, var(--sw-surface));
+  --color-orange-300: color-mix(in oklab, #f97316 42%, var(--sw-surface));
+  --color-orange-600: color-mix(in oklab, #f97316 82%, white);
+  --color-orange-700: color-mix(in oklab, #f97316 70%, white);
+  --color-orange-800: color-mix(in oklab, #f97316 58%, white);
+  --color-orange-900: color-mix(in oklab, #f97316 48%, white);
+  --color-orange-950: color-mix(in oklab, #f97316 40%, white);
+  --color-amber-50: color-mix(in oklab, #f59e0b 12%, var(--sw-surface));
+  --color-amber-100: color-mix(in oklab, #f59e0b 18%, var(--sw-surface));
+  --color-amber-200: color-mix(in oklab, #f59e0b 28%, var(--sw-surface));
+  --color-amber-300: color-mix(in oklab, #f59e0b 42%, var(--sw-surface));
+  --color-amber-600: color-mix(in oklab, #f59e0b 82%, white);
+  --color-amber-700: color-mix(in oklab, #f59e0b 70%, white);
+  --color-amber-800: color-mix(in oklab, #f59e0b 58%, white);
+  --color-amber-900: color-mix(in oklab, #f59e0b 48%, white);
+  --color-amber-950: color-mix(in oklab, #f59e0b 40%, white);
+  --color-yellow-50: color-mix(in oklab, #eab308 12%, var(--sw-surface));
+  --color-yellow-100: color-mix(in oklab, #eab308 18%, var(--sw-surface));
+  --color-yellow-200: color-mix(in oklab, #eab308 28%, var(--sw-surface));
+  --color-yellow-300: color-mix(in oklab, #eab308 42%, var(--sw-surface));
+  --color-yellow-600: color-mix(in oklab, #eab308 82%, white);
+  --color-yellow-700: color-mix(in oklab, #eab308 70%, white);
+  --color-yellow-800: color-mix(in oklab, #eab308 58%, white);
+  --color-yellow-900: color-mix(in oklab, #eab308 48%, white);
+  --color-yellow-950: color-mix(in oklab, #eab308 40%, white);
+  --color-lime-50: color-mix(in oklab, #84cc16 12%, var(--sw-surface));
+  --color-lime-100: color-mix(in oklab, #84cc16 18%, var(--sw-surface));
+  --color-lime-200: color-mix(in oklab, #84cc16 28%, var(--sw-surface));
+  --color-lime-300: color-mix(in oklab, #84cc16 42%, var(--sw-surface));
+  --color-lime-600: color-mix(in oklab, #84cc16 82%, white);
+  --color-lime-700: color-mix(in oklab, #84cc16 70%, white);
+  --color-lime-800: color-mix(in oklab, #84cc16 58%, white);
+  --color-lime-900: color-mix(in oklab, #84cc16 48%, white);
+  --color-lime-950: color-mix(in oklab, #84cc16 40%, white);
+  --color-green-50: color-mix(in oklab, #22c55e 12%, var(--sw-surface));
+  --color-green-100: color-mix(in oklab, #22c55e 18%, var(--sw-surface));
+  --color-green-200: color-mix(in oklab, #22c55e 28%, var(--sw-surface));
+  --color-green-300: color-mix(in oklab, #22c55e 42%, var(--sw-surface));
+  --color-green-600: color-mix(in oklab, #22c55e 82%, white);
+  --color-green-700: color-mix(in oklab, #22c55e 70%, white);
+  --color-green-800: color-mix(in oklab, #22c55e 58%, white);
+  --color-green-900: color-mix(in oklab, #22c55e 48%, white);
+  --color-green-950: color-mix(in oklab, #22c55e 40%, white);
+  --color-emerald-50: color-mix(in oklab, #10b981 12%, var(--sw-surface));
+  --color-emerald-100: color-mix(in oklab, #10b981 18%, var(--sw-surface));
+  --color-emerald-200: color-mix(in oklab, #10b981 28%, var(--sw-surface));
+  --color-emerald-300: color-mix(in oklab, #10b981 42%, var(--sw-surface));
+  --color-emerald-600: color-mix(in oklab, #10b981 82%, white);
+  --color-emerald-700: color-mix(in oklab, #10b981 70%, white);
+  --color-emerald-800: color-mix(in oklab, #10b981 58%, white);
+  --color-emerald-900: color-mix(in oklab, #10b981 48%, white);
+  --color-emerald-950: color-mix(in oklab, #10b981 40%, white);
+  --color-teal-50: color-mix(in oklab, #14b8a6 12%, var(--sw-surface));
+  --color-teal-100: color-mix(in oklab, #14b8a6 18%, var(--sw-surface));
+  --color-teal-200: color-mix(in oklab, #14b8a6 28%, var(--sw-surface));
+  --color-teal-300: color-mix(in oklab, #14b8a6 42%, var(--sw-surface));
+  --color-teal-600: color-mix(in oklab, #14b8a6 82%, white);
+  --color-teal-700: color-mix(in oklab, #14b8a6 70%, white);
+  --color-teal-800: color-mix(in oklab, #14b8a6 58%, white);
+  --color-teal-900: color-mix(in oklab, #14b8a6 48%, white);
+  --color-teal-950: color-mix(in oklab, #14b8a6 40%, white);
+  --color-cyan-50: color-mix(in oklab, #06b6d4 12%, var(--sw-surface));
+  --color-cyan-100: color-mix(in oklab, #06b6d4 18%, var(--sw-surface));
+  --color-cyan-200: color-mix(in oklab, #06b6d4 28%, var(--sw-surface));
+  --color-cyan-300: color-mix(in oklab, #06b6d4 42%, var(--sw-surface));
+  --color-cyan-600: color-mix(in oklab, #06b6d4 82%, white);
+  --color-cyan-700: color-mix(in oklab, #06b6d4 70%, white);
+  --color-cyan-800: color-mix(in oklab, #06b6d4 58%, white);
+  --color-cyan-900: color-mix(in oklab, #06b6d4 48%, white);
+  --color-cyan-950: color-mix(in oklab, #06b6d4 40%, white);
+  --color-sky-50: color-mix(in oklab, #0ea5e9 12%, var(--sw-surface));
+  --color-sky-100: color-mix(in oklab, #0ea5e9 18%, var(--sw-surface));
+  --color-sky-200: color-mix(in oklab, #0ea5e9 28%, var(--sw-surface));
+  --color-sky-300: color-mix(in oklab, #0ea5e9 42%, var(--sw-surface));
+  --color-sky-600: color-mix(in oklab, #0ea5e9 82%, white);
+  --color-sky-700: color-mix(in oklab, #0ea5e9 70%, white);
+  --color-sky-800: color-mix(in oklab, #0ea5e9 58%, white);
+  --color-sky-900: color-mix(in oklab, #0ea5e9 48%, white);
+  --color-sky-950: color-mix(in oklab, #0ea5e9 40%, white);
+  --color-blue-50: color-mix(in oklab, #3b82f6 12%, var(--sw-surface));
+  --color-blue-100: color-mix(in oklab, #3b82f6 18%, var(--sw-surface));
+  --color-blue-200: color-mix(in oklab, #3b82f6 28%, var(--sw-surface));
+  --color-blue-300: color-mix(in oklab, #3b82f6 42%, var(--sw-surface));
+  --color-blue-600: color-mix(in oklab, #3b82f6 82%, white);
+  --color-blue-700: color-mix(in oklab, #3b82f6 70%, white);
+  --color-blue-800: color-mix(in oklab, #3b82f6 58%, white);
+  --color-blue-900: color-mix(in oklab, #3b82f6 48%, white);
+  --color-blue-950: color-mix(in oklab, #3b82f6 40%, white);
+  --color-indigo-50: color-mix(in oklab, #6366f1 12%, var(--sw-surface));
+  --color-indigo-100: color-mix(in oklab, #6366f1 18%, var(--sw-surface));
+  --color-indigo-200: color-mix(in oklab, #6366f1 28%, var(--sw-surface));
+  --color-indigo-300: color-mix(in oklab, #6366f1 42%, var(--sw-surface));
+  --color-indigo-600: color-mix(in oklab, #6366f1 82%, white);
+  --color-indigo-700: color-mix(in oklab, #6366f1 70%, white);
+  --color-indigo-800: color-mix(in oklab, #6366f1 58%, white);
+  --color-indigo-900: color-mix(in oklab, #6366f1 48%, white);
+  --color-indigo-950: color-mix(in oklab, #6366f1 40%, white);
+  --color-violet-50: color-mix(in oklab, #8b5cf6 12%, var(--sw-surface));
+  --color-violet-100: color-mix(in oklab, #8b5cf6 18%, var(--sw-surface));
+  --color-violet-200: color-mix(in oklab, #8b5cf6 28%, var(--sw-surface));
+  --color-violet-300: color-mix(in oklab, #8b5cf6 42%, var(--sw-surface));
+  --color-violet-600: color-mix(in oklab, #8b5cf6 82%, white);
+  --color-violet-700: color-mix(in oklab, #8b5cf6 70%, white);
+  --color-violet-800: color-mix(in oklab, #8b5cf6 58%, white);
+  --color-violet-900: color-mix(in oklab, #8b5cf6 48%, white);
+  --color-violet-950: color-mix(in oklab, #8b5cf6 40%, white);
+  --color-purple-50: color-mix(in oklab, #a855f7 12%, var(--sw-surface));
+  --color-purple-100: color-mix(in oklab, #a855f7 18%, var(--sw-surface));
+  --color-purple-200: color-mix(in oklab, #a855f7 28%, var(--sw-surface));
+  --color-purple-300: color-mix(in oklab, #a855f7 42%, var(--sw-surface));
+  --color-purple-600: color-mix(in oklab, #a855f7 82%, white);
+  --color-purple-700: color-mix(in oklab, #a855f7 70%, white);
+  --color-purple-800: color-mix(in oklab, #a855f7 58%, white);
+  --color-purple-900: color-mix(in oklab, #a855f7 48%, white);
+  --color-purple-950: color-mix(in oklab, #a855f7 40%, white);
+  --color-fuchsia-50: color-mix(in oklab, #d946ef 12%, var(--sw-surface));
+  --color-fuchsia-100: color-mix(in oklab, #d946ef 18%, var(--sw-surface));
+  --color-fuchsia-200: color-mix(in oklab, #d946ef 28%, var(--sw-surface));
+  --color-fuchsia-300: color-mix(in oklab, #d946ef 42%, var(--sw-surface));
+  --color-fuchsia-600: color-mix(in oklab, #d946ef 82%, white);
+  --color-fuchsia-700: color-mix(in oklab, #d946ef 70%, white);
+  --color-fuchsia-800: color-mix(in oklab, #d946ef 58%, white);
+  --color-fuchsia-900: color-mix(in oklab, #d946ef 48%, white);
+  --color-fuchsia-950: color-mix(in oklab, #d946ef 40%, white);
+  --color-pink-50: color-mix(in oklab, #ec4899 12%, var(--sw-surface));
+  --color-pink-100: color-mix(in oklab, #ec4899 18%, var(--sw-surface));
+  --color-pink-200: color-mix(in oklab, #ec4899 28%, var(--sw-surface));
+  --color-pink-300: color-mix(in oklab, #ec4899 42%, var(--sw-surface));
+  --color-pink-600: color-mix(in oklab, #ec4899 82%, white);
+  --color-pink-700: color-mix(in oklab, #ec4899 70%, white);
+  --color-pink-800: color-mix(in oklab, #ec4899 58%, white);
+  --color-pink-900: color-mix(in oklab, #ec4899 48%, white);
+  --color-pink-950: color-mix(in oklab, #ec4899 40%, white);
+  --color-rose-50: color-mix(in oklab, #f43f5e 12%, var(--sw-surface));
+  --color-rose-100: color-mix(in oklab, #f43f5e 18%, var(--sw-surface));
+  --color-rose-200: color-mix(in oklab, #f43f5e 28%, var(--sw-surface));
+  --color-rose-300: color-mix(in oklab, #f43f5e 42%, var(--sw-surface));
+  --color-rose-600: color-mix(in oklab, #f43f5e 82%, white);
+  --color-rose-700: color-mix(in oklab, #f43f5e 70%, white);
+  --color-rose-800: color-mix(in oklab, #f43f5e 58%, white);
+  --color-rose-900: color-mix(in oklab, #f43f5e 48%, white);
+  --color-rose-950: color-mix(in oklab, #f43f5e 40%, white);
 }
 /* ログイン画面の背景。元は差し色で全面を塗っている（青一色はまぶしい）ので、地の色にする */
-.min-h-screen.bg-kumo-brand {
+:root[data-sw-theme="dark"] .min-h-screen.bg-kumo-brand {
   background-color: var(--sw-bg);
 }
 
@@ -291,7 +271,7 @@ body {
 /* kumo は自前で明るい／暗いを切り替えるが、黒の色味が sns-worker と違う */
 /* ------------------------------------------------------------------ */
 
-:root {
+:root[data-sw-theme="dark"] {
   --color-kumo-canvas: var(--sw-bg);
   --color-kumo-base: var(--sw-surface);
   --color-kumo-elevated: var(--sw-surface);
@@ -324,13 +304,13 @@ body {
 /* **箱の中でだけ色の決まりを元に戻す**（中の要素にもそのまま効く）。    */
 /* ------------------------------------------------------------------ */
 
-.bg-slate-950,
-.bg-slate-900,
-.bg-slate-800,
-.bg-gray-900,
-.bg-gray-800,
-.from-slate-950,
-.from-gray-900 {
+:root[data-sw-theme="dark"] .bg-slate-950,
+:root[data-sw-theme="dark"] .bg-slate-900,
+:root[data-sw-theme="dark"] .bg-slate-800,
+:root[data-sw-theme="dark"] .bg-gray-900,
+:root[data-sw-theme="dark"] .bg-gray-800,
+:root[data-sw-theme="dark"] .from-slate-950,
+:root[data-sw-theme="dark"] .from-gray-900 {
   --color-slate-950: #0b0f14;
   --color-slate-900: #141a22;
   --color-slate-800: #1f2732;
