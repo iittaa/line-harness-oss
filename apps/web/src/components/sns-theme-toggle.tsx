@@ -9,11 +9,45 @@
  * （sns-theme-boot.ts）。ここはボタンを押したときの切り替えだけを受け持つ。
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { THEME_KEY as KEY } from './sns-theme-boot'
+
+/** ボタンの大きさ（px）と、「CCに依頼」との間 */
+const SIZE = 40
+const GAP = 8
+/** 「CCに依頼」が無い画面での置き場所（あのボタンの既定位置 bottom-6 right-6 に合わせる） */
+const CORNER: CSSProperties = { bottom: 24, right: 24 }
 
 export default function SnsThemeToggle() {
   const [dark, setDark] = useState<boolean | null>(null)
+  const [pos, setPos] = useState<CSSProperties>(CORNER)
+
+  // **「CCに依頼」ボタンの右隣に付く。**あのボタンは画面ごとに位置が違い
+  // （トーク画面だけ上にずれる・狭い画面では消える）、こちらの決め打ちでは揃わないため、
+  // 置かれた場所を見て合わせる。見つからない画面では右下の隅に出す。
+  // 右隣のぶんの場所は、sns-theme.css で「CCに依頼」を左へずらして空けてある
+  useEffect(() => {
+    const place = () => {
+      const cc = document.querySelector<HTMLElement>('button[aria-label="CCに依頼"]')
+      const r = cc?.getBoundingClientRect()
+      if (!r || r.width === 0) {
+        setPos((p) => (p === CORNER ? p : CORNER))
+        return
+      }
+      const top = Math.round(r.top + (r.height - SIZE) / 2)
+      const left = Math.round(r.right + GAP)
+      // 画面が少し変わるたびに呼ばれるので、位置が同じなら描き直さない
+      setPos((p) => (p.top === top && p.left === left ? p : { top, left }))
+    }
+    place()
+    const mo = new MutationObserver(place)
+    mo.observe(document.body, { childList: true, subtree: true })
+    window.addEventListener('resize', place)
+    return () => {
+      mo.disconnect()
+      window.removeEventListener('resize', place)
+    }
+  }, [])
 
   // **描き終わったあとにもう一度付け直す。**<head> で付けた印が、React の
   // 描き直しで <html> から外れることがあるため（2026-10-05に手元で確認）
@@ -50,7 +84,8 @@ export default function SnsThemeToggle() {
       onClick={flip}
       aria-label={dark ? 'ライトモードにする' : 'ダークモードにする'}
       title={dark ? 'ライトモードにする' : 'ダークモードにする'}
-      className="fixed bottom-4 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-md transition-colors hover:text-gray-900"
+      style={pos}
+      className="fixed z-40 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-md transition-colors hover:text-gray-900"
     >
       {dark ? (
         // 太陽（押すとライトへ）
