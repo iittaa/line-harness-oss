@@ -37,19 +37,9 @@ interface ScenarioListProps {
 export default function ScenarioList({ scenarios, onToggleActive, onDelete, loading }: ScenarioListProps) {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [confirming, setConfirming] = useState(false)
-  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   if (scenarios.length === 0) {
     return <Empty size="sm" title="シナリオがありません" description="新規シナリオから最初の配信フローを作成してください。" />
-  }
-
-  const requestToggle = async (scenario: ScenarioWithCount) => {
-    if (scenario.lineAccountId === null) {
-      setPendingAction({ kind: 'toggle', scenario })
-      return
-    }
-    setTogglingId(scenario.id)
-    try { await onToggleActive(scenario.id, scenario.isActive) } finally { setTogglingId(null) }
   }
 
   const confirmAction = async () => {
@@ -78,10 +68,10 @@ export default function ScenarioList({ scenarios, onToggleActive, onDelete, load
                 <Switch
                   size="sm"
                   checked={scenario.isActive}
-                  transitioning={togglingId === scenario.id}
-                  disabled={loading || togglingId !== null}
+                  transitioning={confirming && pendingAction?.scenario.id === scenario.id}
+                  disabled={loading || confirming}
                   aria-label={`${scenario.name}を${scenario.isActive ? '無効化' : '有効化'}`}
-                  onCheckedChange={() => void requestToggle(scenario)}
+                  onCheckedChange={() => setPendingAction({ kind: 'toggle', scenario })}
                 />
               </div>
 
@@ -110,12 +100,18 @@ export default function ScenarioList({ scenarios, onToggleActive, onDelete, load
       <Dialog.Root role="alertdialog" open={pendingAction !== null} onOpenChange={(open) => { if (!open && !confirming) setPendingAction(null) }}>
         <Dialog size="base" className="p-6">
           <Dialog.Title className="text-lg font-semibold text-kumo-strong">
-            {pendingAction?.kind === 'delete' ? 'シナリオを削除しますか？' : '全アカウント共通シナリオを変更しますか？'}
+            {pendingAction?.kind === 'delete'
+              ? 'シナリオを削除しますか？'
+              : pendingAction?.scenario.lineAccountId === null
+                ? '全アカウント共通シナリオを変更しますか？'
+                : `シナリオを${pendingAction?.scenario.isActive ? '無効化' : '有効化'}しますか？`}
           </Dialog.Title>
           <Dialog.Description className="mt-2 text-sm leading-6 text-kumo-subtle">
             {pendingAction?.kind === 'delete'
               ? `「${pendingAction.scenario.name}」を削除します。${pendingAction.scenario.lineAccountId === null ? '全アカウントから消えます。' : ''}この操作は取り消せません。`
-              : `「${pendingAction?.scenario.name ?? ''}」を${pendingAction?.scenario.isActive ? '無効化' : '有効化'}すると、すべてのLINEアカウントに影響します。`}
+              : pendingAction?.scenario.lineAccountId === null
+                ? `「${pendingAction?.scenario.name ?? ''}」を${pendingAction?.scenario.isActive ? '無効化' : '有効化'}すると、すべてのLINEアカウントに影響します。`
+                : `「${pendingAction?.scenario.name ?? ''}」を${pendingAction?.scenario.isActive ? '無効化' : '有効化'}します。`}
           </Dialog.Description>
           <div className="mt-6 flex justify-end gap-2">
             <Dialog.Close render={(props) => <Button {...props} type="button" variant="secondary" disabled={confirming}>キャンセル</Button>} />

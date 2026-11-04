@@ -142,6 +142,12 @@ function ImagePreview({ content }: { content: string }) {
   }
 }
 
+
+type PendingConfirm =
+  | { kind: 'saveScenario' }
+  | { kind: 'saveStep' }
+  | { kind: 'moveStep'; stepId: string; direction: 'up' | 'down' }
+
 export default function ScenarioDetailClient({ scenarioId }: { scenarioId: string }) {
   const id = scenarioId
 
@@ -165,6 +171,7 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
   const [templates, setTemplates] = useState<TemplateOpt[]>([])
   const [tags, setTags] = useState<TagOpt[]>([])
   const [deleteStepTarget, setDeleteStepTarget] = useState<string | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null)
 
   const deliveryMode: DeliveryMode = (scenario?.deliveryMode ?? 'relative') as DeliveryMode
 
@@ -227,7 +234,6 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
   }, [id])
 
   const handleSaveScenario = async () => {
-    if (!editForm.name.trim()) return
     setSaving(true)
     try {
       const res = await api.scenarios.update(id, {
@@ -286,12 +292,13 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
     setStepError('')
   }
 
-  const handleSaveStep = async () => {
+  // 入力に問題が無いときだけ確認画面を出す（問題があれば従来どおりその場で表示する）
+  const validateStepForm = (): boolean => {
     // 直接入力モード: messageContent 必須 + Flex/画像 は JSON parse 検証
     if (stepForm.inputMode === 'direct') {
       if (!stepForm.messageContent.trim()) {
         setStepError('メッセージ内容を入力してください')
-        return
+        return false
       }
       if (stepForm.messageType === 'flex' || stepForm.messageType === 'image') {
         try {
@@ -302,15 +309,19 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
               ? 'Flex メッセージの JSON が不正です'
               : '画像メッセージの JSON が不正です',
           )
-          return
+          return false
         }
       }
     } else {
       if (!stepForm.templateId) {
         setStepError('テンプレートを選択してください')
-        return
+        return false
       }
     }
+    return true
+  }
+
+  const handleSaveStep = async () => {
     setStepSaving(true)
     setStepError('')
     try {
@@ -394,6 +405,26 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
       setError('並び替えに失敗しました')
     }
   }
+
+  const confirmPending = () => {
+    const pending = pendingConfirm
+    setPendingConfirm(null)
+    if (!pending) return
+    if (pending.kind === 'saveScenario') void handleSaveScenario()
+    else if (pending.kind === 'saveStep') void handleSaveStep()
+    else void handleMoveStep(pending.stepId, pending.direction)
+  }
+
+  const pendingConfirmCopy: { title: string; description: string; action: string } | null =
+    pendingConfirm?.kind === 'saveScenario'
+      ? { title: 'シナリオの設定を保存しますか？', description: 'トリガーや有効/無効の変更は、保存するとすぐに反映されます。', action: '保存する' }
+      : pendingConfirm?.kind === 'saveStep'
+        ? editingStepId
+          ? { title: 'このステップを更新しますか？', description: '文面の変更は、このあと送る分から反映されます。送信時刻の変更は、これから予約される人から反映されます。', action: '更新する' }
+          : { title: 'このステップを追加しますか？', description: '追加すると、このシナリオの配信の対象になります。', action: '追加する' }
+        : pendingConfirm?.kind === 'moveStep'
+          ? { title: '配信の順番を変更しますか？', description: 'このステップの順番を入れ替えます。すぐに反映されます。', action: '変更する' }
+          : null
 
   // 新規追加（上部）とステップ編集（行直下インライン）の両方で使うフォーム。
   // 同時に開くのは常に片方だけなので、state は stepForm を共有する。
@@ -490,7 +521,7 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
 
         <div className="flex gap-2">
           <Button type="button" variant="primary" loading={stepSaving}
-            onClick={handleSaveStep}
+            onClick={() => { if (validateStepForm()) { setStepError(''); setPendingConfirm({ kind: 'saveStep' }) } }}
             disabled={stepSaving}
           >
             {editingStepId ? '更新' : '追加'}
@@ -613,7 +644,7 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
             </div>
             <div className="flex gap-2">
               <Button type="button" variant="primary" loading={saving}
-                onClick={handleSaveScenario}
+                onClick={() => { if (editForm.name.trim()) setPendingConfirm({ kind: 'saveScenario' }) }}
                 disabled={saving}
               >
                 保存
@@ -760,14 +791,14 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
                   <div className="flex flex-col items-stretch gap-1 shrink-0">
                     <div className="flex gap-1">
                       <Button type="button" size="xs" shape="square" variant="ghost" title="上へ"
-                        onClick={() => handleMoveStep(step.id, 'up')}
+                        onClick={() => setPendingConfirm({ kind: 'moveStep', stepId: step.id, direction: 'up' })}
                         disabled={idx === 0}
                         aria-label="上へ"
                       >
                         ↑
                       </Button>
                       <Button type="button" size="xs" shape="square" variant="ghost" title="下へ"
-                        onClick={() => handleMoveStep(step.id, 'down')}
+                        onClick={() => setPendingConfirm({ kind: 'moveStep', stepId: step.id, direction: 'down' })}
                         disabled={idx === sortedSteps.length - 1}
                         aria-label="下へ"
                       >
@@ -799,6 +830,7 @@ export default function ScenarioDetailClient({ scenarioId }: { scenarioId: strin
         scenarioId={id}
         onClose={() => setPreviewOpen(false)}
       />
+      <Dialog.Root role="alertdialog" open={pendingConfirm !== null} onOpenChange={(open) => { if (!open) setPendingConfirm(null) }}><Dialog size="base" className="p-6"><Dialog.Title className="text-lg font-semibold text-kumo-strong">{pendingConfirmCopy?.title}</Dialog.Title><Dialog.Description className="mt-2 text-sm leading-6 text-kumo-subtle">{pendingConfirmCopy?.description}</Dialog.Description><div className="mt-6 flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setPendingConfirm(null)}>キャンセル</Button><Button type="button" variant="primary" onClick={confirmPending}>{pendingConfirmCopy?.action}</Button></div></Dialog></Dialog.Root>
       <Dialog.Root role="alertdialog" open={deleteStepTarget !== null} onOpenChange={(open) => { if (!open) setDeleteStepTarget(null) }}><Dialog><Dialog.Title>このステップを削除しますか？</Dialog.Title><Dialog.Description className="mt-2">配信内容と到達時アクションを削除します。</Dialog.Description><div className="mt-6 flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setDeleteStepTarget(null)}>キャンセル</Button><Button type="button" variant="destructive" onClick={() => { if (deleteStepTarget) void handleDeleteStep(deleteStepTarget) }}>削除</Button></div></Dialog></Dialog.Root>
     </div>
   )
