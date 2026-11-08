@@ -24,8 +24,11 @@ interface AccountRow {
 
 export default function FriendAddSettingsPage() {
   const router = useRouter()
-  const { setSelectedAccountId } = useAccount()
-  const [rows, setRows] = useState<AccountRow[]>([])
+  const { selectedAccountId, setSelectedAccountId } = useAccount()
+  const [allRows, setRows] = useState<AccountRow[]>([])
+  const rows = selectedAccountId
+    ? allRows.filter(row => row.account.id === selectedAccountId)
+    : allRows
   const [orphanScenarios, setOrphanScenarios] = useState<ScenarioWithCount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

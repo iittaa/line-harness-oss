@@ -40,12 +40,14 @@ export default function InboxFilters({
         checked={overdueOnly}
         onCheckedChange={(checked) => onChange({ overdueOnly: checked })}
       />
-      <Select
-        aria-label="LINEアカウント"
-        value={account}
-        onValueChange={(value) => onChange({ account: value ?? '' })}
-        items={[{ value: '', label: '全アカウント' }, ...accountOptions.map((item) => ({ value: item.id, label: item.name }))]}
-      />
+      {accountOptions.length > 0 ? (
+        <Select
+          aria-label="LINEアカウント"
+          value={account}
+          onValueChange={(value) => onChange({ account: value ?? '' })}
+          items={[{ value: '', label: '全アカウント' }, ...accountOptions.map((item) => ({ value: item.id, label: item.name }))]}
+        />
+      ) : null}
     </LayerCard>
   )
 }

@@ -7,6 +7,7 @@ import InboxFilters from '@/components/inbox/inbox-filters'
 import InboxList from '@/components/inbox/inbox-list'
 import InboxSummaryBar from '@/components/inbox/inbox-summary-bar'
 import { api } from '@/lib/api'
+import { useAccount } from '@/contexts/account-context'
 import { useActivityPolling } from '@/hooks/use-activity-polling'
 import { PollingStatus } from '@/components/shared/polling-status'
 import type { InboxRowData } from '@/components/inbox/inbox-row'
@@ -24,7 +25,13 @@ interface AccountOption {
 }
 
 export default function InboxPage() {
-  const [allRows, setAllRows] = useState<InboxRowData[]>([])
+  const { selectedAccountId } = useAccount()
+  const [fetchedRows, setAllRows] = useState<InboxRowData[]>([])
+  // 操作中の垢のお客だけを一覧と集計の対象にする
+  const allRows = useMemo(
+    () => (selectedAccountId ? fetchedRows.filter((r) => r.accountId === selectedAccountId) : fetchedRows),
+    [fetchedRows, selectedAccountId],
+  )
   // サーバが返す真の総件数 (2000件超のとき allRows は capped されるので別途保持)。
   // Codex Round 2 指摘: summary.total を allRows.length から取ると under-report。
   const [serverTotal, setServerTotal] = useState(0)
@@ -103,8 +110,8 @@ export default function InboxPage() {
     // total はサーバ由来 (capped 時も真の総件数を表示する)。
     // byAccount / oldestWaitMinutes は allRows 集計なので capped 時は近似値、
     // truncated バナーで補足する。
-    return { total: serverTotal, byAccount, oldestWaitMinutes }
-  }, [allRows, serverTotal])
+    return { total: selectedAccountId ? allRows.length : serverTotal, byAccount, oldestWaitMinutes }
+  }, [allRows, serverTotal, selectedAccountId])
 
   // ── pagination ──
   const total = filteredRows.length
@@ -132,7 +139,7 @@ export default function InboxPage() {
         q={q}
         account={account}
         overdueOnly={overdueOnly}
-        accountOptions={accountOptions}
+        accountOptions={selectedAccountId ? [] : accountOptions}
         onChange={(next) => {
           if (next.q !== undefined) setQ(next.q)
           if (next.account !== undefined) setAccount(next.account)

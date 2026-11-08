@@ -193,15 +193,20 @@ export default function Sidebar() {
   // (裏の countUnanswered は messages_log 全走査を含む重い集計なので間隔は詰めない。)
   // チャット画面での status 変更・手動返信直後は UNANSWERED_REFRESH_EVENT で
   // 即時再取得する (ポーリング待ちだと操作してもバッジが減らないと感じるため)。
-  const [unansweredCount, setUnansweredCount] = useState<number>(0)
+  // バッジは操作中の垢の件数を出すので、一覧を取って垢ごとに数える。
+  const { selectedAccountId } = useAccount()
+  const [unansweredAccountIds, setUnansweredAccountIds] = useState<string[]>([])
+  const unansweredCount = selectedAccountId
+    ? unansweredAccountIds.filter((id) => id === selectedAccountId).length
+    : unansweredAccountIds.length
   const polling = useActivityPolling({
     intervalMs: 5 * 60_000,
     refreshEvent: UNANSWERED_REFRESH_EVENT,
     load: async (signal) => {
       const { api } = await import('@/lib/api')
-      return api.inbox.unanswered.count({ signal })
+      return api.inbox.unanswered.list({ page: 1, pageSize: 2000 }, { signal })
     },
-    onData: (res) => { if (res.success) setUnansweredCount(res.data.total) },
+    onData: (res) => { if (res.success) setUnansweredAccountIds(res.data.rows.map((row) => row.accountId)) },
     onError: () => {}, // Keep the last count on transient failure.
   })
 
