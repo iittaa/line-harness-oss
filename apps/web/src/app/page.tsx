@@ -273,18 +273,21 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    let cancelled = false
     const load = async () => {
       setLoading(true)
       setError('')
+      const accountId = selectedAccountId ?? undefined
       try {
         const [friendCountRes, scenariosRes, broadcastsRes, templatesRes, automationsRes, scoringRes] = await Promise.allSettled([
-          api.friends.count({ accountId: selectedAccountId ?? undefined }),
-          api.scenarios.list(),
-          api.broadcasts.list(),
+          api.friends.count({ accountId }),
+          api.scenarios.list({ accountId }),
+          api.broadcasts.list({ accountId }),
           api.templates.list(),
-          api.automations.list(),
+          api.automations.list({ accountId }),
           api.mileage.rules(),
         ])
+        if (cancelled) return
 
         setStats({
           friendCount:
@@ -313,13 +316,16 @@ export default function DashboardPage() {
               : null,
         })
       } catch {
-        setError('データの読み込みに失敗しました')
+        if (!cancelled) setError('データの読み込みに失敗しました')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     load()
+    return () => {
+      cancelled = true
+    }
   }, [selectedAccountId])
 
   return (
