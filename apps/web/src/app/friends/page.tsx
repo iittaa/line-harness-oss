@@ -16,6 +16,7 @@ import Header from '@/components/layout/header'
 import FriendListTable from '@/components/friends/friend-list-table'
 import CcPromptButton from '@/components/cc-prompt-button'
 import { useAccount } from '@/contexts/account-context'
+import { useLatestRequest } from '@/lib/use-latest-request'
 
 const ccPrompts = [
   {
@@ -64,7 +65,10 @@ export default function FriendsPage() {
     }
   }, [])
 
+  const beginFriendsRequest = useLatestRequest()
+
   const loadFriends = useCallback(async () => {
+    const isLatest = beginFriendsRequest()
     setLoading(true)
     setError('')
     try {
@@ -78,6 +82,7 @@ export default function FriendsPage() {
         sort: sortMode,
         handled: responseFilter === 'unhandled' ? 'unhandled' : undefined,
       })
+      if (!isLatest()) return
       if (res.success) {
         setFriends(res.data.items)
         setTotal(res.data.total)
@@ -85,11 +90,11 @@ export default function FriendsPage() {
         setError(res.error)
       }
     } catch {
-      setError('友だちの読み込みに失敗しました。もう一度お試しください。')
+      if (isLatest()) setError('友だちの読み込みに失敗しました。もう一度お試しください。')
     } finally {
-      setLoading(false)
+      if (isLatest()) setLoading(false)
     }
-  }, [page, selectedTagId, selectedAccountId, searchSubmitted, sortMode, responseFilter])
+  }, [page, selectedTagId, selectedAccountId, searchSubmitted, sortMode, responseFilter, beginFriendsRequest])
 
   useEffect(() => {
     loadTags()

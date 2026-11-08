@@ -7,6 +7,7 @@ import { api, fetchApi } from '@/lib/api'
 import { getApiBase } from '@/lib/api-base'
 import Header from '@/components/layout/header'
 import { useAccount } from '@/contexts/account-context'
+import { useLatestRequest } from '@/lib/use-latest-request'
 import type { EntryRoute, TrafficPool, Scenario, Tag } from '@line-crm/shared'
 import EditRouteModal from './_components/edit-route-modal'
 import { Badge } from '@cloudflare/kumo/components/badge'
@@ -98,7 +99,10 @@ export default function InflowLinksPage() {
   // pool.activeAccountId はレガシーシングル所属。マルチアカ pool では不十分。
   const [poolMembers, setPoolMembers] = useState<Record<string, Set<string>>>({})
 
+  const beginRequest = useLatestRequest()
+
   const load = async () => {
+    const isLatest = beginRequest()
     setLoading(true)
     setError('')
     // ref-summary は selectedAccountId を渡すと「そのアカで実流入があった
@@ -116,6 +120,7 @@ export default function InflowLinksPage() {
       ).catch(() => ({ success: false, data: null })),
       api.trackedLinks.list().catch(() => ({ success: false, data: null })),
     ])
+    if (!isLatest()) return
     if (r.success) setRoutes(r.data)
     else setError('リファラルリンクの取得に失敗しました')
     if (p.success) setPools(p.data)
@@ -148,6 +153,7 @@ export default function InflowLinksPage() {
           return [pool.id, ids] as const
         }),
       )
+      if (!isLatest()) return
       setPoolMembers(Object.fromEntries(entries))
     }
     setLoading(false)

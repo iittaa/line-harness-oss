@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
+import { useLatestRequest } from '@/lib/use-latest-request'
 import Header from '@/components/layout/header'
 import CcPromptButton from '@/components/cc-prompt-button'
 import { Banner } from '@cloudflare/kumo/components/banner'
@@ -114,22 +115,26 @@ export default function RemindersPage() {
   const [stepFormError, setStepFormError] = useState('')
   const [pendingDelete, setPendingDelete] = useState<{ kind: 'reminder' | 'step'; id: string } | null>(null)
 
+  const beginRequest = useLatestRequest()
+
   const loadReminders = useCallback(async () => {
+    const isLatest = beginRequest()
     setLoading(true)
     setError('')
     try {
       const res = await api.reminders.list({ accountId: selectedAccountId || undefined })
+      if (!isLatest()) return
       if (res.success) {
         setReminders(res.data)
       } else {
         setError(res.error)
       }
     } catch {
-      setError('リマインダーの読み込みに失敗しました。もう一度お試しください。')
+      if (isLatest()) setError('リマインダーの読み込みに失敗しました。もう一度お試しください。')
     } finally {
-      setLoading(false)
+      if (isLatest()) setLoading(false)
     }
-  }, [selectedAccountId])
+  }, [selectedAccountId, beginRequest])
 
   useEffect(() => {
     loadReminders()

@@ -154,7 +154,11 @@ function insightSub(account: AccountDeliveryHealth, delta: number | null): strin
 // 出ていなかった）を受けたセクション。クォータはリアルタイム、友だち/ブロックの
 // インサイトは LINE 側の集計が前日分までなので as-of がずれる点をラベルで明示する。
 function DeliveryHealthSection() {
-  const [health, setHealth] = useState<AccountDeliveryHealth[] | null>(null)
+  const { selectedAccountId } = useAccount()
+  const [allHealth, setHealth] = useState<AccountDeliveryHealth[] | null>(null)
+  const health = selectedAccountId
+    ? (allHealth?.filter((account) => account.lineAccountId === selectedAccountId) ?? null)
+    : allHealth
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -186,7 +190,7 @@ function DeliveryHealthSection() {
   return (
     <section className="mb-6" aria-label="配信健全性">
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold text-kumo-strong">アカウント別 配信健全性</h2>
+        <h2 className="text-sm font-semibold text-kumo-strong">配信健全性</h2>
         <p className="text-[11px] text-kumo-subtle">クォータ=リアルタイム / 友だち・ブロック=前日時点</p>
       </div>
 

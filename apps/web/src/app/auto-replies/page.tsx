@@ -13,6 +13,7 @@ import { Loader } from '@cloudflare/kumo/components/loader'
 import { Table } from '@cloudflare/kumo/components/table'
 import { api } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
+import { useLatestRequest } from '@/lib/use-latest-request'
 import Header from '@/components/layout/header'
 import EditDialog, { type AutoReplyDraft } from '@/components/auto-replies/edit-dialog'
 
@@ -55,7 +56,10 @@ export default function AutoRepliesPage() {
   const [deleteTarget, setDeleteTarget] = useState<AutoReply | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const beginRequest = useLatestRequest()
+
   const load = useCallback(async () => {
+    const isLatest = beginRequest()
     setLoading(true)
     setError('')
     try {
@@ -63,6 +67,7 @@ export default function AutoRepliesPage() {
         api.autoReplies.list({ accountId: selectedAccountId || undefined }),
         api.templates.list(),
       ])
+      if (!isLatest()) return
       if (autoReplyResponse.success) setItems(autoReplyResponse.data)
       if (templateResponse.success) {
         setTemplates(templateResponse.data.map((template) => ({
@@ -73,11 +78,11 @@ export default function AutoRepliesPage() {
         })))
       }
     } catch {
-      setError('読み込みに失敗しました')
+      if (isLatest()) setError('読み込みに失敗しました')
     } finally {
-      setLoading(false)
+      if (isLatest()) setLoading(false)
     }
-  }, [selectedAccountId])
+  }, [selectedAccountId, beginRequest])
 
   useEffect(() => { void load() }, [load])
 

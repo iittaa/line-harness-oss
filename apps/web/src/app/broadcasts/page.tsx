@@ -18,6 +18,7 @@ import { Tabs } from '@cloudflare/kumo/components/tabs'
 import type { Tag } from '@line-crm/shared'
 import { api, type ApiBroadcast, type BroadcastInsight } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
+import { useLatestRequest } from '@/lib/use-latest-request'
 import Header from '@/components/layout/header'
 import CcPromptButton from '@/components/cc-prompt-button'
 
@@ -89,7 +90,10 @@ function BroadcastList() {
     }
   }
 
+  const beginRequest = useLatestRequest()
+
   const load = useCallback(async () => {
+    const isLatest = beginRequest()
     setLoading(true)
     setError('')
     try {
@@ -97,15 +101,16 @@ function BroadcastList() {
         api.broadcasts.list({ accountId: selectedAccountId || undefined }),
         api.tags.list(),
       ])
+      if (!isLatest()) return
       if (broadcastsRes.success) setBroadcasts(broadcastsRes.data)
       else setError(broadcastsRes.error)
       if (tagsRes.success) setTags(tagsRes.data)
     } catch {
-      setError('データの読み込みに失敗しました。もう一度お試しください。')
+      if (isLatest()) setError('データの読み込みに失敗しました。もう一度お試しください。')
     } finally {
-      setLoading(false)
+      if (isLatest()) setLoading(false)
     }
-  }, [selectedAccountId])
+  }, [selectedAccountId, beginRequest])
 
   useEffect(() => { void load() }, [load])
   useEffect(() => { broadcasts.filter((item) => item.status === 'sent').forEach((item) => { void loadInsight(item.id) }) }, [broadcasts])

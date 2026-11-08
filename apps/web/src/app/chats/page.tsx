@@ -5,6 +5,7 @@ import { parseStickerMessageContent, stickerFallback } from '@line-crm/shared'
 import { api, fetchApi } from '@/lib/api'
 import { UNANSWERED_REFRESH_EVENT } from '@/lib/events'
 import { useAccount } from '@/contexts/account-context'
+import { useLatestRequest } from '@/lib/use-latest-request'
 import CcPromptButton from '@/components/cc-prompt-button'
 import FlexPreviewComponent from '@/components/flex-preview'
 import FriendInfoSidebar from '@/components/chats/friend-info-sidebar'
@@ -408,11 +409,15 @@ export default function ChatsPage() {
     return params
   }, [statusFilter, selectedAccountId, unansweredOnly])
 
+  const beginChatsRequest = useLatestRequest()
+
   const loadChats = useCallback(async () => {
+    const isLatest = beginChatsRequest()
     setLoading(true)
     setError('')
     try {
       const chatRes = await api.chats.list(buildListParams(null))
+      if (!isLatest()) return
       if (chatRes.success) {
         const rows = chatRes.data as unknown as Chat[]
         setChats(rows)
@@ -422,11 +427,11 @@ export default function ChatsPage() {
         setHasMoreChats(!unansweredOnly && rows.length === CHAT_PAGE_SIZE)
       }
     } catch {
-      setError('チャットの読み込みに失敗しました。もう一度お試しください。')
+      if (isLatest()) setError('チャットの読み込みに失敗しました。もう一度お試しください。')
     } finally {
-      setLoading(false)
+      if (isLatest()) setLoading(false)
     }
-  }, [buildListParams, unansweredOnly])
+  }, [buildListParams, unansweredOnly, beginChatsRequest])
 
   // 「さらに読み込む」— サーバ由来カーソルの続きを取得して末尾に追加する。
   // 楽観更新との競合に備えて既存 id は除外し、重複表示を防ぐ。
