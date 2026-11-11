@@ -172,14 +172,19 @@ export default function TagsPage() {
     }
   }, [beginRequest, selectedAccountId])
 
-  // 垢を選んでいるときは、その垢の友だちに付いているタグと、まだ誰にも
-  // 付いていない（どの垢のものか分からない）タグだけを出す
+  // 垢を選んでいるときは、その垢の友だちに付いているタグだけを出す。
+  // まだ誰にも付いていないタグはどの垢のものか分からないので、切り替えたときだけ出す
+  const [showUnused, setShowUnused] = useState(false)
+  const unusedCount = useMemo(
+    () => items.filter((tag) => (tag.friendCount ?? 0) === 0).length,
+    [items],
+  )
   const visibleItems = useMemo((): Array<Tag & { accountFriendCount?: number }> => {
     if (!accountCounts) return items
     return items
-      .filter((tag) => (accountCounts.get(tag.id) ?? 0) > 0 || (tag.friendCount ?? 0) === 0)
+      .filter((tag) => (accountCounts.get(tag.id) ?? 0) > 0 || (showUnused && (tag.friendCount ?? 0) === 0))
       .map((tag) => ({ ...tag, accountFriendCount: accountCounts.get(tag.id) ?? 0 }))
-  }, [items, accountCounts])
+  }, [items, accountCounts, showUnused])
 
   useEffect(() => { load() }, [load])
 
@@ -197,6 +202,8 @@ export default function TagsPage() {
       await api.tags.create({ name, color: newColor })
       setNewName('')
       setCreating(false)
+      // 作ったばかりのタグは誰にも付いていないので、見えるようにしておく
+      setShowUnused(true)
       await load()
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 409) {
@@ -329,6 +336,20 @@ export default function TagsPage() {
             </div>
           </div>
         </LayerCard>
+      ) : null}
+
+      {accountCounts && unusedCount > 0 ? (
+        <div className="mb-3 flex justify-end">
+          <Button
+            type="button"
+            size="xs"
+            variant={showUnused ? 'primary' : 'secondary'}
+            aria-pressed={showUnused}
+            onClick={() => setShowUnused((current) => !current)}
+          >
+            誰にも付いていないタグも出す（{unusedCount}）
+          </Button>
+        </div>
       ) : null}
 
       <LayerCard className="overflow-hidden p-0">
