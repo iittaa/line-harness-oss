@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { PlusIcon, TagIcon, TrashIcon } from '@phosphor-icons/react'
 import { Banner } from '@cloudflare/kumo/components/banner'
 import { Button } from '@cloudflare/kumo/components/button'
@@ -14,6 +14,8 @@ import type { Tag } from '@line-crm/shared'
 import { api, ApiError } from '@/lib/api'
 import Header from '@/components/layout/header'
 import TagBadge from '@/components/friends/tag-badge'
+import { useAccount } from '@/contexts/account-context'
+import { useLatestRequest } from '@/lib/use-latest-request'
 
 const PRESET_COLORS = [
   '#3B82F6',
@@ -123,7 +125,11 @@ function TagMileageEditor({ tag, onSaved }: { tag: Tag; onSaved: () => void }) {
 }
 
 export default function TagsPage() {
+  const { selectedAccountId } = useAccount()
+  const beginRequest = useLatestRequest()
   const [items, setItems] = useState<Tag[]>([])
+  // 操作中の垢の友だちにそのタグが付いている人数（タグID → 人数）
+  const [accountCounts, setAccountCounts] = useState<Map<string, number> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
@@ -134,17 +140,46 @@ export default function TagsPage() {
   const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
+    const isLatest = beginRequest()
     setLoading(true)
     setError('')
     try {
       const response = await api.tags.list({ withCounts: true })
-      if (response.success) setItems(response.data)
+      if (!response.success) return
+      // タグには持ち主の垢が無いので、垢を選んでいるときはタグごとに
+      // 「その垢の友だちのうち何人に付いているか」を数える
+      let counts: Map<string, number> | null = null
+      if (selectedAccountId) {
+        const totals = await Promise.all(response.data.map(async (tag) => {
+          const res = await api.friends.list({
+            accountId: selectedAccountId,
+            tagId: tag.id,
+            limit: 1,
+            includeTags: false,
+          })
+          if (!res.success) throw new Error('count_failed')
+          return [tag.id, res.data.total] as const
+        }))
+        counts = new Map(totals)
+      }
+      if (!isLatest()) return
+      setItems(response.data)
+      setAccountCounts(counts)
     } catch {
-      setError('読み込みに失敗しました')
+      if (isLatest()) setError('読み込みに失敗しました')
     } finally {
-      setLoading(false)
+      if (isLatest()) setLoading(false)
     }
-  }, [])
+  }, [beginRequest, selectedAccountId])
+
+  // 垢を選んでいるときは、その垢の友だちに付いているタグと、まだ誰にも
+  // 付いていない（どの垢のものか分からない）タグだけを出す
+  const visibleItems = useMemo((): Array<Tag & { accountFriendCount?: number }> => {
+    if (!accountCounts) return items
+    return items
+      .filter((tag) => (accountCounts.get(tag.id) ?? 0) > 0 || (tag.friendCount ?? 0) === 0)
+      .map((tag) => ({ ...tag, accountFriendCount: accountCounts.get(tag.id) ?? 0 }))
+  }, [items, accountCounts])
 
   useEffect(() => { load() }, [load])
 
@@ -197,7 +232,7 @@ export default function TagsPage() {
 
   const deleteDescription = deleteTarget
     ? (deleteTarget.friendCount ?? 0) > 0
-      ? `「${deleteTarget.name}」は ${deleteTarget.friendCount} 人の友だちに付与されています。削除すると全員から外れます。`
+      ? `「${deleteTarget.name}」は全部の垢で ${deleteTarget.friendCount} 人の友だちに付与されています。削除すると全員から外れます。`
       : `「${deleteTarget.name}」を削除します。この操作は取り消せません。`
     : ''
 
@@ -321,6 +356,17 @@ export default function TagsPage() {
                     </span>
                   </Table.Cell>
                 </Table.Row>
+              ) : visibleItems.length === 0 && items.length > 0 ? (
+                <Table.Row>
+                  <Table.Cell colSpan={9} className="p-0">
+                    <Empty
+                      size="sm"
+                      icon={<TagIcon size={32} />}
+                      title="この垢の友だちに付いているタグはありません"
+                      description="ほかの垢のタグは左上の切り替えから見られます。"
+                    />
+                  </Table.Cell>
+                </Table.Row>
               ) : items.length === 0 ? (
                 <Table.Row>
                   <Table.Cell colSpan={9} className="p-0">
@@ -338,11 +384,12 @@ export default function TagsPage() {
                   </Table.Cell>
                 </Table.Row>
               ) : (
-                items.map((tag) => (
+                visibleItems.map((tag) => (
                   <Table.Row key={tag.id}>
                     <Table.Cell><TagBadge tag={tag} /></Table.Cell>
                     <Table.Cell className="tabular-nums text-kumo-default">
-                      {tag.friendCount ?? 0}<span className="ml-0.5 text-xs text-kumo-subtle">人</span>
+                      {tag.accountFriendCount ?? tag.friendCount ?? 0}
+                      <span className="ml-0.5 text-xs text-kumo-subtle">人</span>
                     </Table.Cell>
                     <Table.Cell className="text-xs text-kumo-subtle">
                       {tag.createdAt ? new Date(tag.createdAt).toLocaleDateString('ja-JP') : ''}
