@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { fetchApi } from '@/lib/api'
+import { api, fetchApi } from '@/lib/api'
 import { countryFlag } from '@/lib/country-flag'
+import { useAccount } from '@/contexts/account-context'
 import Header from '@/components/layout/header'
 import { displayFormName, sortFormsByLatestAnswer } from './form-list'
 import { Banner } from '@cloudflare/kumo/components/banner'
@@ -81,8 +82,37 @@ function formatValue(v: unknown): string {
   return String(v)
 }
 
+/** 操作中の垢の友だちIDを全部集める（回答をその垢の分だけに絞るため） */
+async function loadAccountFriendIds(accountId: string): Promise<Set<string>> {
+  const ids = new Set<string>()
+  const limit = 1000
+  for (let offset = 0; ; offset += limit) {
+    const res = await api.friends.list({
+      accountId,
+      limit: String(limit),
+      offset: String(offset),
+      includeTags: false,
+    })
+    if (!res.success) throw new Error('friends_failed')
+    for (const friend of res.data.items) ids.add(friend.id)
+    if (res.data.items.length < limit) return ids
+  }
+}
+
 export default function FormSubmissionsPage() {
-  const [forms, setForms] = useState<Form[]>([])
+  const { selectedAccountId } = useAccount()
+  const [allForms, setForms] = useState<Form[]>([])
+  // 操作中の垢の友だちが答えたフォームだけを出す。まだ誰も答えていないフォームは
+  // どの垢のものか分からないので、どの垢でも出す。
+  const forms = useMemo(
+    () => (selectedAccountId
+      ? allForms.filter((form) => (
+        form.usedByAccounts.length === 0
+        || form.usedByAccounts.some((account) => account.id === selectedAccountId)
+      ))
+      : allForms),
+    [allForms, selectedAccountId],
+  )
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [fieldLabels, setFieldLabels] = useState<Record<string, string>>({})
@@ -113,8 +143,11 @@ export default function FormSubmissionsPage() {
     setPage(1)
     setDetailSubmission(null)
     try {
-      const formRes = await fetchApi<{ success: boolean; data: FormDetail | { fields: string | FormDetail['fields'] } }>(`/api/forms/${formId}`)
-      const subRes = await fetchApi<{ success: boolean; data: Submission[] }>(`/api/forms/${formId}/submissions`)
+      const [formRes, subRes, accountFriendIds] = await Promise.all([
+        fetchApi<{ success: boolean; data: FormDetail | { fields: string | FormDetail['fields'] } }>(`/api/forms/${formId}`),
+        fetchApi<{ success: boolean; data: Submission[] }>(`/api/forms/${formId}/submissions`),
+        selectedAccountId ? loadAccountFriendIds(selectedAccountId) : Promise.resolve(null),
+      ])
 
       // Race-guard: only apply if user hasn't switched away
       setSelectedFormId((current) => {
@@ -130,7 +163,9 @@ export default function FormSubmissionsPage() {
         }
         if (subRes.success) {
           setSubmissions(
-            subRes.data.map((s) => ({
+            subRes.data
+              .filter((s) => !accountFriendIds || (s.friendId !== null && accountFriendIds.has(s.friendId)))
+              .map((s) => ({
               ...s,
               data: typeof s.data === 'string' ? JSON.parse(s.data) : s.data,
               friendName: s.friendName ?? null,
@@ -144,7 +179,14 @@ export default function FormSubmissionsPage() {
       if (current === formId) setSubLoading(false)
       return current
     })
-  }, [])
+  }, [selectedAccountId])
+
+  // 垢を切り替えたら、前の垢で開いていた回答一覧は閉じる
+  useEffect(() => {
+    setSelectedFormId(null)
+    setSubmissions([])
+    setDetailSubmission(null)
+  }, [selectedAccountId])
 
   const handleSelectForm = (formId: string) => {
     setSelectedFormId(formId)
@@ -266,6 +308,8 @@ export default function FormSubmissionsPage() {
         )}
         {loading ? (
           <Loader />
+        ) : forms.length === 0 && allForms.length > 0 ? (
+          <Empty title="この垢の回答はまだありません" description="この垢の友だちが答えたフォームだけを表示しています。ほかの垢は左上の切り替えから見られます。" />
         ) : forms.length === 0 ? (
           <Empty title="フォームがまだありません" description="フォームが作成されると回答を確認できます。" />
         ) : (
@@ -276,7 +320,12 @@ export default function FormSubmissionsPage() {
             {filteredForms.map((form) => {
               const isSelected = selectedFormId === form.id
               const totalCount = form.usedByAccounts.reduce((sum, a) => sum + a.count, 0)
-              const displayCount = form.submitCount ?? totalCount
+              const cardAccounts = selectedAccountId
+                ? form.usedByAccounts.filter((a) => a.id === selectedAccountId)
+                : form.usedByAccounts
+              const displayCount = selectedAccountId
+                ? (cardAccounts[0]?.count ?? 0)
+                : (form.submitCount ?? totalCount)
               const normalizedName = displayFormName(form.name)
               const isDuplicate = (duplicateNameCounts.get(normalizedName.toLocaleLowerCase('ja-JP')) ?? 0) > 1
               return (
@@ -289,12 +338,14 @@ export default function FormSubmissionsPage() {
                     variant="secondary"
                     onClick={() => handleSelectForm(form.id)}
                     aria-pressed={isSelected}
-                    className={`h-auto w-full cursor-pointer justify-start p-4 text-left ${
+                    className={`h-auto w-full cursor-pointer justify-start p-4 text-left whitespace-normal ${
                       isSelected
                         ? 'ring-2 ring-kumo-brand bg-kumo-control'
                         : ''
                     }`}
                   >
+                  {/* ボタン部品は中身を横一列に並べるので、縦に積む入れ物で包む */}
+                  <div className="flex w-full min-w-0 flex-col">
                   <div className="mb-2 flex items-start gap-2 pr-7">
                     <h3 className={`text-sm font-semibold leading-snug ${isSelected ? 'text-kumo-brand' : 'text-gray-900'}`}>
                       {normalizedName}
@@ -306,9 +357,9 @@ export default function FormSubmissionsPage() {
                     <span className="text-xs text-gray-400">件の回答</span>
                   </div>
 
-                  {form.usedByAccounts.length > 0 ? (
+                  {cardAccounts.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {form.usedByAccounts.map((acc) => {
+                      {cardAccounts.map((acc) => {
                         const flag = countryFlag(acc.country)
                         return (
                           <span
@@ -337,6 +388,7 @@ export default function FormSubmissionsPage() {
                         同名あり・{form.fields.length}項目・作成 {new Date(form.createdAt).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' })}
                       </span>
                     )}
+                  </div>
                   </div>
                   </Button>
 
