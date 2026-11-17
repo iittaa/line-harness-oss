@@ -6,7 +6,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Header from '@/components/layout/header'
 import MarkdownView from '@/components/ext/markdown-view'
-import Picker from '@/components/ext/picker'
 import ViewKeyForm from '@/components/ext/view-key-form'
 import { fetchChimei, NeedKeyError } from '@/lib/chimei-view'
 import { useAccount, type AccountWithStats } from '@/contexts/account-context'
@@ -216,16 +215,8 @@ export default function KartePage() {
         <Empty title="カルテはまだありません" />
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-          {/* はみ出しを隠さない。キャラのプルダウンが枠の外まで開くため */}
+          {/* キャラは左上で選んだ垢で決まるので、ここでは選ばせない */}
           <LayerCard className="p-0 lg:sticky lg:top-4">
-            <div className="border-b border-gray-200 p-3">
-              <Picker
-                label="キャラ"
-                value={charName}
-                options={chars.map((c) => ({ value: c.name, label: c.name, n: c.people.length }))}
-                onChange={(v) => { setCharName(v); setFolder(''); setFile('') }}
-              />
-            </div>
             <ul className="max-h-[70vh] divide-y divide-gray-100 overflow-y-auto">
               {!char && (
                 <li className="px-4 py-10 text-center text-sm text-gray-600">この垢のカルテはまだありません。</li>
