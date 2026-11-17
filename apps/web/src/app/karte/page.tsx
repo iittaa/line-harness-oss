@@ -9,6 +9,7 @@ import MarkdownView from '@/components/ext/markdown-view'
 import Picker from '@/components/ext/picker'
 import ViewKeyForm from '@/components/ext/view-key-form'
 import { fetchChimei, NeedKeyError } from '@/lib/chimei-view'
+import { useAccount, type AccountWithStats } from '@/contexts/account-context'
 import { Banner } from '@cloudflare/kumo/components/banner'
 import { Empty } from '@cloudflare/kumo/components/empty'
 import { LayerCard } from '@cloudflare/kumo/components/layer-card'
@@ -68,6 +69,18 @@ function splitName(name: string): { num: string; name: string } {
 function shortDate(v?: string): string {
   const m = v?.match(/^\d{4}-(\d{2})-(\d{2})(?:\s+(\d{2}:\d{2}))?/)
   return m ? `${Number(m[1])}/${Number(m[2])}${m[3] ? ` ${m[3]}` : ''}` : v ?? ''
+}
+
+// 左上で選んでいるLINEの垢に当たるキャラ。フォルダの最後の名前と垢の名前で結ぶ
+// 文乃 ↔ 文乃｜守り狐を視る人、地名霊視/高嶺 ↔ 高嶺、地名霊視テスト ↔ テスト
+function charForAccount(chars: Character[], acc: AccountWithStats | null): string {
+  if (!acc) return ''
+  const names = [acc.name, acc.displayName].filter((n): n is string => Boolean(n))
+  const hit = chars.find((c) => {
+    const seg = c.name.split('/').pop() ?? c.name
+    return names.some((n) => n.includes(seg) || seg.includes(n))
+  })
+  return hit?.name ?? ''
 }
 
 function fileLabel(path: string, folder: string): string {
@@ -131,15 +144,14 @@ export default function KartePage() {
   const [needKey, setNeedKey] = useState(false)
   const [keyFailed, setKeyFailed] = useState(false)
   const [reload, setReload] = useState(0)
+  const [kantei, setKantei] = useState<string | null>(null)
+  const { selectedAccount, selectedAccountId } = useAccount()
 
   useEffect(() => {
     setNeedKey(false)
     setError('')
     fetchChimei<Character[]>('/karte')
-      .then((data) => {
-        setChars(data)
-        setCharName((cur) => cur || data[0]?.name || '')
-      })
+      .then((data) => setChars(data))
       .catch((e) => {
         if (e instanceof NeedKeyError) {
           setKeyFailed(reload > 0)
@@ -148,7 +160,16 @@ export default function KartePage() {
       })
   }, [reload])
 
-  const char = useMemo(() => chars?.find((c) => c.name === charName), [chars, charName])
+  // 垢を切り替えたら、その垢のキャラの一覧に替える。開いていたお客は閉じる
+  useEffect(() => {
+    if (!chars) return
+    setCharName(charForAccount(chars, selectedAccount))
+    setFolder('')
+    setFile('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chars, selectedAccountId])
+
+  const char =useMemo(() => chars?.find((c) => c.name === charName), [chars, charName])
   const person = useMemo(() => char?.people.find((p) => p.folder === folder), [char, folder])
 
   useEffect(() => {
@@ -170,6 +191,16 @@ export default function KartePage() {
 
   const isKarte = file.endsWith('/カルテ.md')
   const front = useMemo(() => (text && isKarte ? parseFront(text) : null), [text, isKarte])
+
+  // カルテを開いたときは、送った無料鑑定の本文も下に続けて出す
+  const kanteiPath = isKarte ? person?.files.find((f) => f.endsWith('/鑑定/無料鑑定.md')) ?? '' : ''
+  useEffect(() => {
+    setKantei(null)
+    if (!kanteiPath) return
+    fetchChimei<{ text: string }>(`/file?path=${encodeURIComponent(kanteiPath)}`)
+      .then((data) => setKantei(data.text))
+      .catch(() => setKantei(null))
+  }, [kanteiPath])
 
   return (
     <div className="space-y-6">
@@ -196,6 +227,9 @@ export default function KartePage() {
               />
             </div>
             <ul className="max-h-[70vh] divide-y divide-gray-100 overflow-y-auto">
+              {!char && (
+                <li className="px-4 py-10 text-center text-sm text-gray-600">この垢のカルテはまだありません。</li>
+              )}
               {char?.people.map((p) => {
                 const n = splitName(p.name)
                 const active = p.folder === folder
@@ -249,6 +283,7 @@ export default function KartePage() {
                   <>
                     {front && <Summary front={front} />}
                     <MarkdownView text={text} />
+                    {kantei && <MarkdownView text={`## 送った無料鑑定\n\n${kantei}`} />}
                   </>
                 )}
               </div>
